@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>BF-Tag Liebersee Alarm-App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      margin: 0;
+      padding: 15px;
+    }
+
+    h1, h2 {
+      color: #ff3b3b;
+    }
+
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 15px;
+      border: 1px solid #444;
+    }
+
+    input, textarea, select, button {
+      width: 100%;
+      box-sizing: border-box;
+      margin: 6px 0;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+    }
+
+    textarea {
+      min-height: 80px;
+    }
+
+    button {
+      background: #ff3b3b;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button.green {
+      background: #198754;
+    }
+
+    button.orange {
+      background: #fd7e14;
+    }
+
+    button.gray {
+      background: #666;
+    }
+
+    .alarmkarte {
+      background: #330000;
+      border: 1px solid #ff3b3b;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #ccc;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🚒 BF-Tag Liebersee</h1>
+  <p class="small">Übungsalarmierung nur für Ausbildung und BF-Tag.</p>
+
+  <div class="box">
+    <h2>Übungsalarm auslösen</h2>
+
+    <input id="stichwort" placeholder="Stichwort, z. B. Brand klein">
+    <input id="ort" placeholder="Einsatzort, z. B. Feuerwehr Liebersee">
+    <textarea id="lage" placeholder="Lagemeldung, z. B. Rauchentwicklung aus Garage"></textarea>
+
+    <button onclick="alarmAusloesen()">🚨 Übungsalarm auslösen</button>
+  </div>
+
+  <div class="box">
+    <h2>Rückmeldung</h2>
+
+    <input id="name" placeholder="Name oder Funkrufname">
+
+    <button class="green" onclick="rueckmelden('Komme')">✅ Ich komme</button>
+    <button class="orange" onclick="rueckmelden('Komme später')">⏰ Ich komme später</button>
+    <button class="gray" onclick="rueckmelden('Komme nicht')">❌ Ich komme nicht</button>
+  </div>
+
+  <div class="box">
+    <h2>Status setzen</h2>
+
+    <select id="gruppe">
+      <option>Gruppe 1</option>
+      <option>Gruppe 2</option>
+      <option>Angriffstrupp</option>
+      <option>Wassertrupp</option>
+      <option>Schlauchtrupp</option>
+      <option>Melder</option>
+      <option>Maschinist</option>
+      <option>Einsatzleitung</option>
+    </select>
+
+    <button onclick="setStatus('Status 3 - Ausgerückt')">Status 3 - Ausgerückt</button>
+    <button onclick="setStatus('Status 4 - Einsatzstelle an')">Status 4 - Einsatzstelle an</button>
+    <button onclick="setStatus('Status 1 - Einsatzbereit')">Status 1 - Einsatzbereit</button>
+  </div>
+
+  <div class="box">
+    <h2>Aktuelle Alarme</h2>
+    <div id="alarmListe"></div>
+  </div>
+
+  <div class="box">
+    <h2>Rückmeldungen</h2>
+    <div id="rueckmeldungen"></div>
+  </div>
+
+  <div class="box">
+    <h2>Statusübersicht</h2>
+    <div id="statusListe"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      onSnapshot,
+      query,
+      orderBy,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCX2jKo5fJ0boV49OSgyy-KEMWlX06PlPs",
+      authDomain: "bf-tag-liebersee.firebaseapp.com",
+      projectId: "bf-tag-liebersee",
+      storageBucket: "bf-tag-liebersee.firebasestorage.app",
+      messagingSenderId: "844931379687",
+      appId: "1:844931379687:web:3cb7d18b40deb601becd42"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.alarmAusloesen = async function() {
+      const stichwort = document.getElementById("stichwort").value;
+      const ort = document.getElementById("ort").value;
+      const lage = document.getElementById("lage").value;
+
+      if (!stichwort || !ort || !lage) {
+        alert("Bitte Stichwort, Ort und Lage eintragen.");
+        return;
+      }
+
+      await addDoc(collection(db, "alarme"), {
+        stichwort: stichwort,
+        ort: ort,
+        lage: lage,
+        status: "Alarmiert",
+        erstelltAm: serverTimestamp()
+      });
+
+      alert("Übungsalarm wurde ausgelöst.");
+
+      document.getElementById("stichwort").value = "";
+      document.getElementById("ort").value = "";
+      document.getElementById("lage").value = "";
+    };
+
+    window.rueckmelden = async function(status) {
+      const name = document.getElementById("name").value;
+
+      if (!name) {
+        alert("Bitte Namen oder Funkrufnamen eintragen.");
+        return;
+      }
+
+      await addDoc(collection(db, "rueckmeldungen"), {
+        name: name,
+        status: status,
+        zeit: serverTimestamp()
+      });
+
+      alert("Rückmeldung gespeichert.");
+    };
+
+    window.setStatus = async function(status) {
+      const gruppe = document.getElementById("gruppe").value;
+
+      await addDoc(collection(db, "status"), {
+        gruppe: gruppe,
+        status: status,
+        zeit: serverTimestamp()
+      });
+
+      alert("Status gespeichert.");
+    };
+
+    const alarmListe = document.getElementById("alarmListe");
+    const alarmQuery = query(collection(db, "alarme"), orderBy("erstelltAm", "desc"));
+
+    onSnapshot(alarmQuery, (snapshot) => {
+      alarmListe.innerHTML = "";
+
+      snapshot.forEach((docSnap) => {
+        const alarm = docSnap.data();
+
+        const eintrag = document.createElement("div");
+        eintrag.className = "alarmkarte";
+
+        eintrag.innerHTML = `
+          <h3>🚨 ${alarm.stichwort}</h3>
+          <p><strong>Ort:</strong> ${alarm.ort}</p>
+          <p><strong>Lage:</strong> ${alarm.lage}</p>
+          <p><strong>Status:</strong> ${alarm.status}</p>
+        `;
+
+        alarmListe.appendChild(eintrag);
+      });
+    });
+
+    const rueckmeldungenDiv = document.getElementById("rueckmeldungen");
+    const rueckQuery = query(collection(db, "rueckmeldungen"), orderBy("zeit", "desc"));
+
+    onSnapshot(rueckQuery, (snapshot) => {
+      rueckmeldungenDiv.innerHTML = "";
+
+      snapshot.forEach((docSnap) => {
+        const r = docSnap.data();
+
+        const zeile = document.createElement("p");
+        zeile.textContent = `${r.name}: ${r.status}`;
+
+        rueckmeldungenDiv.appendChild(zeile);
+      });
+    });
+
+    const statusListe = document.getElementById("statusListe");
+    const statusQuery = query(collection(db, "status"), orderBy("zeit", "desc"));
+
+    onSnapshot(statusQuery, (snapshot) => {
+      statusListe.innerHTML = "";
+
+      snapshot.forEach((docSnap) => {
+        const s = docSnap.data();
+
+        const zeile = document.createElement("p");
+        zeile.textContent = `${s.gruppe}: ${s.status}`;
+
+        statusListe.appendChild(zeile);
+      });
+    });
+  </script>
+
+</body>
+</html>
