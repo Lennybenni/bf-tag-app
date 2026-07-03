@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>BF-Tag Liebersee Alarm-App PRO</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#b00000" />
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root{--bg:#0d0d0f;--card:#1b1b20;--card2:#25252c;--red:#e30613;--green:#198754;--orange:#fd7e14;--blue:#0d6efd;--gray:#666;--txt:#fff;--muted:#bbb;--border:#3a3a42}
+    *{box-sizing:border-box} body{font-family:Arial,sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:12px} h1,h2,h3{margin:8px 0;color:#ff4b4b}.top{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}.box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin:10px 0}.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}.tabs{display:flex;gap:6px;overflow:auto;position:sticky;top:0;background:rgba(13,13,15,.95);padding:8px 0;z-index:5}.tabs button{width:auto;white-space:nowrap;background:var(--card2)} input,textarea,select,button{width:100%;margin:5px 0;padding:12px;border-radius:10px;border:1px solid #444;background:#111;color:#fff;font-size:16px}textarea{min-height:75px}button{border:0;background:var(--red);font-weight:bold;cursor:pointer}.green{background:var(--green)}.orange{background:var(--orange)}.blue{background:var(--blue)}.gray{background:var(--gray)}.dark{background:#303038}.danger{background:#8b0000}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#333;margin:2px;font-size:13px}.alarm{background:#310000;border:2px solid var(--red);border-radius:14px;padding:12px;margin:8px 0}.alarm.active{animation:pulse 1.4s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(227,6,19,.65)}70%{box-shadow:0 0 0 12px rgba(227,6,19,0)}100%{box-shadow:0 0 0 0 rgba(227,6,19,0)}}.muted{color:var(--muted);font-size:13px}.hidden{display:none!important}.big{font-size:28px;font-weight:bold}.mono{font-family:Consolas,monospace;white-space:pre-wrap;background:#111;padding:10px;border-radius:10px;max-height:360px;overflow:auto}.ok{color:#72e08a}.warn{color:#ffc107}.bad{color:#ff7272}.monitor{font-size:1.3rem}.monitor .alarm{font-size:1.5rem}.listitem{border-bottom:1px solid #333;padding:8px 0}.right{text-align:right}.smallbtn{padding:7px 9px;font-size:13px;width:auto;display:inline-block}.badge{float:right;background:#111;border:1px solid #555;border-radius:8px;padding:4px 7px}.printonly{display:none}@media print{body{background:#fff;color:#000}.box,.alarm{border:1px solid #000;background:#fff;color:#000}.tabs,button,input,select,textarea,.noPrint{display:none}.printonly{display:block}}
+  </style>
+</head>
+<body>
+  <div id="loginBox" class="box">
+    <h1>🚒 BF-Tag Liebersee</h1>
+    <p class="muted">PRO-Version für Übungsalarmierung. Keine echte Einsatzalarmierung.</p>
+    <div class="row">
+      <div><label>Zugangscode</label><input id="loginCode" placeholder="z. B. BF2026"></div>
+      <div><label>Name / Funkrufname</label><input id="loginName" placeholder="z. B. Gruppe 1 oder Dirk"></div>
+      <div><label>PIN</label><input id="loginPin" type="password" placeholder="deine PIN"></div>
+    </div>
+    <button onclick="login()">Einloggen</button>
+    <button class="blue" onclick="toggleRegister()">Neuen Benutzer registrieren</button>
+    <div id="registerBox" class="hidden">
+      <h2>Benutzer registrieren</h2>
+      <div class="row">
+        <input id="regName" placeholder="Name oder Funkrufname">
+        <input id="regPin" type="password" placeholder="eigene PIN, mind. 4 Zeichen">
+        <select id="regRole"><option value="teilnehmer">Teilnehmer</option><option value="leitstelle">Leitstelle / Betreuer</option><option value="monitor">Monitor / Beamer</option></select>
+        <select id="regGroup"><option>Gruppe 1</option><option>Gruppe 2</option><option>Angriffstrupp</option><option>Wassertrupp</option><option>Schlauchtrupp</option><option>Melder</option><option>Maschinist</option><option>Einsatzleitung</option><option>Betreuer</option></select>
+        <input id="regAdminPin" type="password" placeholder="Betreuer-PIN nur für Leitstelle">
+      </div>
+      <button class="green" onclick="registerUser()">Registrieren</button>
+    </div>
+    <p id="loginMsg" class="warn"></p>
+  </div>
+
+  <div id="appBox" class="hidden">
+    <div class="top">
+      <div><h1>🚒 BF-Tag Liebersee</h1><span id="userBadge" class="pill"></span><span id="onlineBadge" class="pill">online</span></div>
+      <button class="gray smallbtn" onclick="logout()">Abmelden</button>
+    </div>
+    <div class="tabs noPrint">
+      <button onclick="showTab('dashboard')">Übersicht</button>
+      <button onclick="showTab('alarm')" data-admin>Alarm</button>
+      <button onclick="showTab('teilnehmer')">Teilnehmer</button>
+      <button onclick="showTab('status')">Status</button>
+      <button onclick="showTab('funk')">Funk/Meldungen</button>
+      <button onclick="showTab('aufgaben')">Aufgaben</button>
+      <button onclick="showTab('protokoll')">Protokoll</button>
+      <button onclick="showTab('users')" data-admin>Benutzer</button>
+      <button onclick="showTab('settings')">Einstellungen</button>
+      <button onclick="showTab('monitor')">Monitor</button>
+    </div>
+
+    <section id="dashboard" class="tab box">
+      <h2>Aktueller Einsatz</h2><div id="currentAlarm"></div>
+      <h2>Neueste Meldungen</h2><div id="latestMessages"></div>
+    </section>
+
+    <section id="alarm" class="tab box hidden">
+      <h2>Übungsalarm auslösen</h2>
+      <div class="row">
+        <select id="template" onchange="fillTemplate()"><option value="">Vorlage wählen</option><option>Brand klein</option><option>Brand Gebäude</option><option>TH klein</option><option>Personensuche</option><option>Ölspur</option><option>Erste Hilfe</option><option>Unklare Rauchentwicklung</option></select>
+        <select id="prio"><option>Normal</option><option>Dringend</option><option>Nachalarm</option></select>
+        <select id="alarmTarget"><option>Alle</option><option>Gruppe 1</option><option>Gruppe 2</option><option>Angriffstrupp</option><option>Wassertrupp</option><option>Schlauchtrupp</option><option>Betreuer</option></select>
+      </div>
+      <input id="stichwort" placeholder="Stichwort">
+      <input id="ort" placeholder="Einsatzort">
+      <textarea id="lage" placeholder="Lagemeldung"></textarea>
+      <button onclick="alarmAusloesen()">🚨 Übungsalarm auslösen</button>
+      <button class="orange" onclick="endActiveAlarm()">Einsatz beenden</button>
+      <button class="danger" onclick="resetBfTag()">BF-Tag komplett zurücksetzen</button>
+    </section>
+
+    <section id="teilnehmer" class="tab box hidden">
+      <h2>Rückmeldung zum aktuellen Einsatz</h2>
+      <div id="responseAlarmInfo"></div>
+      <div class="row">
+        <button class="green" onclick="respond('Komme')">✅ Ich komme</button>
+        <button class="orange" onclick="respond('Komme später')">⏰ Komme später</button>
+        <button class="gray" onclick="respond('Komme nicht')">❌ Komme nicht</button>
+        <button class="blue" onclick="ackAlarm()">🔕 Alarm quittieren / Ton aus</button>
+      </div>
+      <h2>Rückmeldungen</h2><div id="responsesList"></div>
+    </section>
+
+    <section id="status" class="tab box hidden">
+      <h2>Status setzen</h2>
+      <select id="statusUnit"><option>Gruppe 1</option><option>Gruppe 2</option><option>Angriffstrupp</option><option>Wassertrupp</option><option>Schlauchtrupp</option><option>Melder</option><option>Maschinist</option><option>Einsatzleitung</option></select>
+      <div class="row"><button onclick="setStatus('Status 1 - Einsatzbereit')">1 Einsatzbereit</button><button onclick="setStatus('Status 3 - Ausgerückt')">3 Ausgerückt</button><button onclick="setStatus('Status 4 - Einsatzstelle an')">4 Einsatzstelle</button><button onclick="setStatus('Status 6 - Nicht einsatzbereit')">6 Nicht bereit</button></div>
+      <h2>Statusübersicht</h2><div id="statusList"></div>
+    </section>
+
+    <section id="funk" class="tab box hidden">
+      <h2>Funk / Lagemeldung</h2>
+      <div class="row"><input id="msgFrom" placeholder="Von, z. B. Gruppe 1"><select id="msgType"><option>Lagemeldung</option><option>Nachforderung</option><option>Rückfrage</option><option>Allgemeine Info</option></select></div>
+      <textarea id="msgText" placeholder="Meldung schreiben"></textarea>
+      <button class="blue" onclick="sendMessage()">Meldung senden</button>
+      <h2>Meldungen</h2><div id="messageList"></div>
+    </section>
+
+    <section id="aufgaben" class="tab box hidden">
+      <h2>Aufgaben / Funktionen</h2>
+      <div class="row" data-admin><input id="taskText" placeholder="Aufgabe, z. B. Wasserversorgung aufbauen"><select id="taskTarget"><option>Gruppe 1</option><option>Gruppe 2</option><option>Angriffstrupp</option><option>Wassertrupp</option><option>Schlauchtrupp</option><option>Melder</option><option>Maschinist</option></select><button onclick="addTask()">Aufgabe anlegen</button></div>
+      <div id="taskList"></div>
+    </section>
+
+    <section id="protokoll" class="tab box hidden">
+      <h2>Einsatzprotokoll</h2>
+      <button class="blue" onclick="copyProtocol()">Protokoll kopieren</button>
+      <button class="gray" onclick="window.print()">Drucken / als PDF speichern</button>
+      <div id="protocol" class="mono"></div>
+    </section>
+
+    <section id="users" class="tab box hidden">
+      <h2>Benutzerverwaltung</h2><div id="usersList"></div>
+    </section>
+
+    <section id="settings" class="tab box hidden">
+      <h2>Einstellungen auf diesem Gerät</h2>
+      <label>Alarmton-Wiederholung</label><select id="repeatSetting" onchange="saveSettings()"><option value="4000">alle 4 Sekunden</option><option value="7000">alle 7 Sekunden</option><option value="10000">alle 10 Sekunden</option><option value="30000">alle 30 Sekunden</option></select>
+      <button class="blue" onclick="testTone()">Feuerwehr-Gong testen</button><button class="gray" onclick="ackAlarm()">Ton stoppen</button>
+      <button class="green" onclick="requestNotifications()">Push-Benachrichtigungen erlauben</button>
+      <p id="pushStatus" class="muted">Push: noch nicht geprüft</p>
+      <p class="muted">Hinweis: Browser erlauben Töne und Push meist erst nach dem Einloggen oder einem Klick. Für echte Push-Meldungen auch bei komplett geschlossener App wäre zusätzlich Firebase Cloud Messaging nötig.</p>
+    </section>
+
+    <section id="monitor" class="tab box hidden monitor">
+      <h2>📺 Monitor / Beamer</h2><div id="monitorAlarm"></div><div class="row"><div><h3>Rückmeldungen</h3><div id="monitorResponses"></div></div><div><h3>Status</h3><div id="monitorStatus"></div></div></div>
+    </section>
+  </div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, where, getDocs, doc, updateDoc, deleteDoc, limit } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+const firebaseConfig={apiKey:"AIzaSyCX2jKo5fJ0boV49OSgyy-KEMWlX06PlPs",authDomain:"bf-tag-liebersee.firebaseapp.com",projectId:"bf-tag-liebersee",storageBucket:"bf-tag-liebersee.firebasestorage.app",messagingSenderId:"844931379687",appId:"1:844931379687:web:3cb7d18b40deb601becd42"};
+const app=initializeApp(firebaseConfig); const db=getFirestore(app);
+const ACCESS_CODE="BF2026"; const ADMIN_PIN="1122"; let me=null, activeAlarm=null, alarms=[], responses=[], statuses=[], messages=[], tasks=[], users=[], logs=[]; let alarmTimer=null, audioCtx=null, lastAlarmId=null;
+const $=id=>document.getElementById(id); const clean=s=>(s||"").trim(); const key=s=>clean(s).toLowerCase();
+async function sha(s){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')}
+function nowText(){return new Date().toLocaleString('de-DE')}
+function toggleRegister(){ $('registerBox').classList.toggle('hidden') } window.toggleRegister=toggleRegister;
+async function registerUser(){ if(clean($('loginCode').value)!==ACCESS_CODE && clean($('loginCode').value)!==""){} const n=clean($('regName').value), p=clean($('regPin').value), r=$('regRole').value, g=$('regGroup').value; if(!n||p.length<4){$('loginMsg').textContent='Name und PIN mit mindestens 4 Zeichen eintragen.';return} if(r==='leitstelle' && clean($('regAdminPin').value)!==ADMIN_PIN){$('loginMsg').textContent='Für Leitstelle ist die Betreuer-PIN nötig.';return} const pinHash=await sha(p); const q=query(collection(db,'users'),where('loginKey','==',key(n))); const ex=await getDocs(q); if(!ex.empty){$('loginMsg').textContent='Dieser Name ist schon registriert.';return} await addDoc(collection(db,'users'),{name:n,loginKey:key(n),pinHash,role:r,group:g,active:true,createdAt:serverTimestamp()}); $('loginMsg').textContent='Registriert. Jetzt mit Name und PIN einloggen.'; $('loginName').value=n; $('loginPin').value=p; await addLog('Benutzer registriert', n+' ('+r+')') } window.registerUser=registerUser;
+async function login(){ const code=clean($('loginCode').value), n=clean($('loginName').value), p=clean($('loginPin').value); if(code!==ACCESS_CODE){$('loginMsg').textContent='Zugangscode falsch.';return} if(!n||!p){$('loginMsg').textContent='Name und PIN eintragen.';return} unlockAudio(); const pinHash=await sha(p); const q=query(collection(db,'users'),where('loginKey','==',key(n)),where('pinHash','==',pinHash),limit(1)); const snap=await getDocs(q); if(snap.empty){$('loginMsg').textContent='Benutzer nicht gefunden. Bitte erst registrieren.';return} const d=snap.docs[0]; const u={id:d.id,...d.data()}; if(u.active===false){$('loginMsg').textContent='Benutzer ist gesperrt.';return} me=u; localStorage.setItem('bfUser',JSON.stringify({name:n,pin:p,code})); $('loginBox').classList.add('hidden'); $('appBox').classList.remove('hidden'); $('userBadge').textContent=`${u.name} · ${u.role} · ${u.group}`; document.querySelectorAll('[data-admin]').forEach(el=>el.style.display=(isAdmin()?'':'none')); showTab(u.role==='monitor'?'monitor':'dashboard'); subscribeAll(); addLog('Login', u.name); } window.login=login;
+function logout(){localStorage.removeItem('bfUser'); location.reload()} window.logout=logout; function isAdmin(){return me&&me.role==='leitstelle'}
+window.addEventListener('load',()=>{const s=JSON.parse(localStorage.getItem('bfUser')||'null'); if(s){$('loginCode').value=s.code;$('loginName').value=s.name;$('loginPin').value=s.pin} const rs=localStorage.getItem('repeatMs'); if(rs && $('repeatSetting')) $('repeatSetting').value=rs; if('serviceWorker' in navigator){navigator.serviceWorker.register('./service-worker.js').catch(console.warn)} if($('pushStatus') && 'Notification' in window){$('pushStatus').textContent='Push: '+Notification.permission}});
+function showTab(id){document.querySelectorAll('.tab').forEach(t=>t.classList.add('hidden')); $(id).classList.remove('hidden')} window.showTab=showTab;
+function unlockAudio(){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)(); audioCtx.resume()}catch(e){}}
+function tone(freq,start,duration,gain=0.22,type='sine'){
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type=type; o.frequency.setValueAtTime(freq,audioCtx.currentTime+start);
+  g.gain.setValueAtTime(0.0001,audioCtx.currentTime+start);
+  g.gain.exponentialRampToValueAtTime(gain,audioCtx.currentTime+start+0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+start+duration);
+  o.connect(g); g.connect(audioCtx.destination); o.start(audioCtx.currentTime+start); o.stop(audioCtx.currentTime+start+duration+0.05);
+}
+function feuerwehrGong(){
+  try{
+    unlockAudio();
+    // Gong-artig: tiefer Auftakt, zwei helle Schläge, tiefer Nachklang
+    tone(392,0.00,0.55,0.25,'sine'); tone(784,0.05,0.45,0.10,'triangle');
+    tone(523.25,0.62,0.55,0.26,'sine'); tone(1046.5,0.67,0.40,0.10,'triangle');
+    tone(392,1.24,0.75,0.23,'sine'); tone(196,1.28,0.90,0.10,'sine');
+    if(navigator.vibrate) navigator.vibrate([450,180,450,180,700]);
+  }catch(e){console.warn(e)}
+}
+function startAlarmTone(){ if(alarmTimer) return; feuerwehrGong(); const ms=parseInt(localStorage.getItem('repeatMs')||$('repeatSetting').value||'4000'); alarmTimer=setInterval(feuerwehrGong,ms)}
+function stopAlarmTone(){clearInterval(alarmTimer); alarmTimer=null} window.ackAlarm=async function(){stopAlarmTone(); if(activeAlarm&&me){localStorage.setItem('ack_'+activeAlarm.id,'1'); await addDoc(collection(db,'responses'),{alarmId:activeAlarm.id,name:me.name,group:me.group,status:'Alarm quittiert',zeit:serverTimestamp()}); await addLog('Alarm quittiert', me.name)}};
+function testTone(){startAlarmTone(); setTimeout(stopAlarmTone,15000)} window.testTone=testTone; function saveSettings(){localStorage.setItem('repeatMs',$('repeatSetting').value)} window.saveSettings=saveSettings;
+async function requestNotifications(){
+  if(!('Notification' in window)){ if($('pushStatus')) $('pushStatus').textContent='Push: Dieser Browser unterstützt keine Benachrichtigungen.'; return; }
+  const permission=await Notification.requestPermission();
+  if($('pushStatus')) $('pushStatus').textContent='Push: '+(permission==='granted'?'erlaubt':'nicht erlaubt');
+  if('serviceWorker' in navigator){ try{ await navigator.serviceWorker.register('./service-worker.js'); }catch(e){console.warn(e)} }
+}
+window.requestNotifications=requestNotifications;
+async function showAlarmNotification(a){
+  if(!a || localStorage.getItem('notif_'+a.id)) return;
+  localStorage.setItem('notif_'+a.id,'1');
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  const title='🚨 BF-Tag Alarm: '+(a.stichwort||'Übungsalarm');
+  const body=(a.ort||'')+' · '+(a.lage||'Bitte App öffnen und Rückmeldung geben.');
+  const options={body, tag:'bf-alarm-'+a.id, requireInteraction:true, vibrate:[450,180,450,180,700], data:{url:location.href, alarmId:a.id}, actions:[{action:'open',title:'App öffnen'}]};
+  try{ const reg=await navigator.serviceWorker.ready; reg.showNotification(title,options); }catch(e){ new Notification(title,options); }
+}
+function fillTemplate(){const v=$('template').value; const map={"Brand klein":["Brand klein","Dorfplatz Liebersee","Rauchentwicklung aus Mülltonne. Erkundung und Kleinlöschgerät."],"Brand Gebäude":["Brand Gebäude","Feuerwehr Liebersee","Rauch aus Gebäude, Person vermisst. Innenangriff nur Übungslage."],"TH klein":["Technische Hilfe klein","Gerätehaus","Person unter Gegenstand eingeklemmt. Sichern und einfache Rettung."],"Personensuche":["Personensuche","Umgebung Liebersee","Kind vermisst, Suchabschnitte bilden."],"Ölspur":["Ölspur","Ortslage Liebersee","Ausgelaufene Flüssigkeit, Verkehrsabsicherung."],"Erste Hilfe":["Erste Hilfe","Sportplatz","Verletzte Person, starke Blutung simuliert."],"Unklare Rauchentwicklung":["Unklare Rauchentwicklung","Ortslage","Rauch sichtbar, Ursache unklar."]}; if(map[v]){[$('stichwort').value,$('ort').value,$('lage').value]=map[v]}} window.fillTemplate=fillTemplate;
+async function alarmAusloesen(){ if(!isAdmin())return alert('Nur Leitstelle/Betreuer.'); const st=clean($('stichwort').value), ort=clean($('ort').value), lage=clean($('lage').value); if(!st||!ort||!lage)return alert('Stichwort, Ort und Lage ausfüllen.'); const nr='E-'+new Date().toISOString().slice(0,19).replace(/[-T:]/g,''); await addDoc(collection(db,'alarms'),{nr,stichwort:st,ort,lage,prio:$('prio').value,target:$('alarmTarget').value,status:'Alarmiert',active:true,createdBy:me.name,createdAt:serverTimestamp()}); await addLog('Alarm ausgelöst', `${nr} ${st} · ${ort}`); $('stichwort').value='';$('ort').value='';$('lage').value=''} window.alarmAusloesen=alarmAusloesen;
+async function endActiveAlarm(){ if(!isAdmin()||!activeAlarm)return; await updateDoc(doc(db,'alarms',activeAlarm.id),{status:'Beendet',active:false,endedAt:serverTimestamp(),endedBy:me.name}); await addLog('Einsatz beendet', activeAlarm.nr)} window.endActiveAlarm=endActiveAlarm;
+async function respond(status){ if(!activeAlarm)return alert('Kein aktiver Einsatz.'); await addDoc(collection(db,'responses'),{alarmId:activeAlarm.id,name:me.name,group:me.group,status,zeit:serverTimestamp()}); localStorage.setItem('ack_'+activeAlarm.id,'1'); stopAlarmTone(); await addLog('Rückmeldung', `${me.name}: ${status}`)} window.respond=respond;
+async function setStatus(status){ const unit=$('statusUnit').value; await addDoc(collection(db,'statuses'),{unit,status,by:me.name,zeit:serverTimestamp()}); await addLog('Status', `${unit}: ${status}`)} window.setStatus=setStatus;
+async function sendMessage(){ const from=clean($('msgFrom').value)||me.name; const text=clean($('msgText').value); if(!text)return; await addDoc(collection(db,'messages'),{from,type:$('msgType').value,text,zeit:serverTimestamp()}); $('msgText').value=''; await addLog('Meldung', `${from}: ${text}`)} window.sendMessage=sendMessage;
+async function addTask(){ if(!isAdmin())return; const text=clean($('taskText').value), target=$('taskTarget').value; if(!text)return; await addDoc(collection(db,'tasks'),{text,target,done:false,createdBy:me.name,createdAt:serverTimestamp()}); $('taskText').value=''; await addLog('Aufgabe', `${target}: ${text}`)} window.addTask=addTask;
+window.toggleTask=async(id,done)=>{await updateDoc(doc(db,'tasks',id),{done:!done,doneBy:me.name,doneAt:serverTimestamp()}); await addLog('Aufgabe geändert', id)};
+async function addLog(type,text){try{await addDoc(collection(db,'logs'),{type,text,zeit:serverTimestamp()})}catch(e){console.warn(e)}}
+async function resetBfTag(){ if(!isAdmin())return; if(!confirm('Wirklich alle Alarme, Meldungen, Status, Aufgaben und Protokolle löschen? Benutzer bleiben erhalten.'))return; for(const c of ['alarms','responses','statuses','messages','tasks','logs']){const s=await getDocs(collection(db,c)); for(const d of s.docs) await deleteDoc(doc(db,c,d.id));} alert('BF-Tag zurückgesetzt.')} window.resetBfTag=resetBfTag;
+function ts(x){try{return x?.toDate?x.toDate().toLocaleTimeString('de-DE'):'--:--'}catch(e){return '--:--'}}
+function subscribeAll(){ const opts={includeMetadataChanges:true}; onSnapshot(query(collection(db,'alarms'),orderBy('createdAt','desc')),snap=>{alarms=snap.docs.map(d=>({id:d.id,...d.data()})); activeAlarm=alarms.find(a=>a.active)||null; render(); if(activeAlarm && activeAlarm.id!==lastAlarmId){lastAlarmId=activeAlarm.id; if(!localStorage.getItem('ack_'+activeAlarm.id)){ startAlarmTone(); showAlarmNotification(activeAlarm); }}}); onSnapshot(query(collection(db,'responses'),orderBy('zeit','desc')),snap=>{responses=snap.docs.map(d=>({id:d.id,...d.data()})); render()}); onSnapshot(query(collection(db,'statuses'),orderBy('zeit','desc')),snap=>{statuses=snap.docs.map(d=>({id:d.id,...d.data()})); render()}); onSnapshot(query(collection(db,'messages'),orderBy('zeit','desc')),snap=>{messages=snap.docs.map(d=>({id:d.id,...d.data()})); render()}); onSnapshot(query(collection(db,'tasks'),orderBy('createdAt','desc')),snap=>{tasks=snap.docs.map(d=>({id:d.id,...d.data()})); render()}); onSnapshot(query(collection(db,'users'),orderBy('createdAt','desc')),snap=>{users=snap.docs.map(d=>({id:d.id,...d.data()})); render()}); onSnapshot(query(collection(db,'logs'),orderBy('zeit','desc')),snap=>{logs=snap.docs.map(d=>({id:d.id,...d.data()})); render()}); }
+function renderAlarm(a){if(!a)return '<p class="muted">Kein aktiver Einsatz.</p>'; return `<div class="alarm ${a.active?'active':''}"><span class="badge">${a.prio||'Normal'} · ${a.target||'Alle'}</span><div class="big">🚨 ${a.stichwort}</div><p><b>Nr.:</b> ${a.nr||''}</p><p><b>Ort:</b> ${a.ort}</p><p><b>Lage:</b> ${a.lage}</p><p><b>Status:</b> ${a.status}</p><p class="muted">ausgelöst: ${ts(a.createdAt)} durch ${a.createdBy||''}</p></div>`}
+function render(){ if(!me)return; $('currentAlarm').innerHTML=renderAlarm(activeAlarm)+renderAlarmHistory(); $('responseAlarmInfo').innerHTML=renderAlarm(activeAlarm); const rr=responses.filter(r=>!activeAlarm||r.alarmId===activeAlarm.id); const respHtml=rr.map(r=>`<div class="listitem"><b>${r.name}</b> <span class="pill">${r.group||''}</span>: ${r.status} <span class="muted">${ts(r.zeit)}</span></div>`).join('')||'<p class="muted">Noch keine Rückmeldungen.</p>'; $('responsesList').innerHTML=respHtml; $('monitorResponses').innerHTML=respHtml; const statusHtml=statuses.slice(0,30).map(s=>`<div class="listitem"><b>${s.unit}</b>: ${s.status} <span class="muted">${ts(s.zeit)} · ${s.by||''}</span></div>`).join('')||'<p class="muted">Kein Status.</p>'; $('statusList').innerHTML=statusHtml; $('monitorStatus').innerHTML=statusHtml; const msgHtml=messages.slice(0,30).map(m=>`<div class="listitem"><b>${m.from}</b> <span class="pill">${m.type}</span><br>${m.text}<br><span class="muted">${ts(m.zeit)}</span></div>`).join('')||'<p class="muted">Keine Meldungen.</p>'; $('messageList').innerHTML=msgHtml; $('latestMessages').innerHTML=msgHtml; $('taskList').innerHTML=tasks.map(t=>`<div class="listitem"><b>${t.target}</b>: ${t.done?'✅ <s>'+t.text+'</s>':t.text} <button class="smallbtn green" onclick="toggleTask('${t.id}',${t.done===true})">${t.done?'wieder öffnen':'erledigt'}</button></div>`).join('')||'<p class="muted">Keine Aufgaben.</p>'; $('monitorAlarm').innerHTML=renderAlarm(activeAlarm); $('protocol').textContent=logs.map(l=>`${ts(l.zeit)} | ${l.type} | ${l.text}`).join('\n'); $('usersList').innerHTML=users.map(u=>`<div class="listitem"><b>${u.name}</b> <span class="pill">${u.role}</span> <span class="pill">${u.group}</span> ${u.active===false?'<span class="bad">gesperrt</span>':'<span class="ok">aktiv</span>'}</div>`).join(''); }
+function renderAlarmHistory(){return alarms.slice(0,8).map(a=>`<div class="listitem"><b>${a.nr}</b> ${a.stichwort} · ${a.status} <span class="muted">${ts(a.createdAt)}</span></div>`).join('')}
+function copyProtocol(){navigator.clipboard.writeText($('protocol').textContent); alert('Protokoll kopiert.')} window.copyProtocol=copyProtocol;
+window.addEventListener('online',()=>$('onlineBadge').textContent='online'); window.addEventListener('offline',()=>$('onlineBadge').textContent='offline');
+</script>
+</body>
+</html>
